@@ -1,12 +1,16 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
 var Table = require("cli-table");
+var connection;
+var newPromise;
 var done = false;
 var database;
 var shoppingCart = [];
 var quantities = [];
 
-function addProduct(product, quantity) {
+read();
+
+function addProductToCart(product, quantity) {
     shoppingCart.push(database[product]);
     quantities.push(quantity);
 }
@@ -15,17 +19,40 @@ function checkout() {
     var total = 0;
     console.log("Your shopping cart:")
     var table = new Table({
-        head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
-        colWidths: [15, 15, 15, 10, 15]
+        head: ['Product ID', 'Name', 'Department', 'Price'],
+        colWidths: [15, 15, 15, 10]
     });
     shoppingCart.forEach((element) => {
         table.push([element.item_id, element.product_name, element.department_name, element.price, element.stock_quantity]);
-        total = total + parseFloat(element.price, 10);
+        total = total + (parseFloat(element.price, 10));
     });
 
     console.log(table.toString());
     console.log(`Your total: $ ${total}`);
+    connection.end();
 };
+
+function updateQuantities(item, qty) {
+
+    var newQty = database[item].stock_quantity - qty;
+    console.log(newQty);
+
+    var query = connection.query(
+        "UPDATE products SET ? WHERE ?",
+        [{
+                stock_quantity: newQty
+            },
+            {
+                item_id: parseInt(item)
+            }
+        ],
+        function (err, res) {
+            if (err) throw err;
+            console.log(res.affectedRows + " products updated!\n");
+        }
+    );
+
+}
 
 function buyProduct() {
     inquirer.prompt([{
@@ -43,7 +70,9 @@ function buyProduct() {
         var productID = answer.productID - 1;
         if (Number.isInteger(qty) && answer.productID <= database.length) {
 
-            addProduct(productID, qty);
+            updateQuantities(productID, qty);
+            addProductToCart(productID, qty);
+
 
             inquirer.prompt([{
                 message: 'Add another product?',
@@ -65,50 +94,46 @@ function buyProduct() {
 
 };
 
+function read() {
 
-var connection = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "Helmar@123",
-    database: "bamazon"
-})
-
-connection.connect(function (err) {
-    if (err) throw err;
-    newPromise.then(function (data) {
-        console.log(data);
-        buyProduct();
-    });
-});
-
-
-var newPromise = new Promise(function displayProducts(resolve, reject) {
-    connection.query("SELECT * from products", function (err, res) {
-        if (err) throw err;
-        var table = new Table({
-            head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
-            colWidths: [15, 15, 15, 10, 15]
-        });
-        res.forEach(function (element) {
-            table.push([element.item_id, element.product_name, element.department_name, `$ ${element.price}`, element.stock_quantity]);
-        })
-        console.log(table.toString());
-        database = res;
-        done = true;
-
-        connection.end();
+    connection = mysql.createConnection({
+        host: "localhost",
+        user: "root",
+        password: "Helmar@123",
+        database: "bamazon"
     })
 
-    setTimeout(() => {
-        if (done === true) {
-            resolve("worked")
-        } else {
-            reject("did not work")
-        }
-    }, 1000);
-});
+    connection.connect(function (err) {
+        if (err) throw err;
+        newPromise.then(function (data) {
+            console.log(data);
+            buyProduct();
+        });
+    });
 
-
+    newPromise = new Promise(function displayProducts(resolve, reject) {
+        connection.query("SELECT * from products", function (err, res) {
+            if (err) throw err;
+            var table = new Table({
+                head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
+                colWidths: [15, 15, 15, 10, 15]
+            });
+            res.forEach(function (element) {
+                table.push([element.item_id, element.product_name, element.department_name, `$ ${element.price}`, element.stock_quantity]);
+            })
+            console.log(table.toString());
+            database = res;
+            done = true;
+        })
+        setTimeout(() => {
+            if (done === true) {
+                resolve("worked")
+            } else {
+                reject("did not work")
+            }
+        }, 1000);
+    });
+}
 
 
 
