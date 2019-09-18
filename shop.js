@@ -6,7 +6,6 @@ var database;
 var shoppingCart = [];
 var quantities = [];
 
-
 function addProductToCart(product, quantity) {
     shoppingCart.push(database[product]);
     quantities.push(quantity);
@@ -92,6 +91,90 @@ function buyProduct() {
     });
 };
 
+function addInventory(newItem) {
+    if (newItem) {
+        console.log('Enter the new product information:')
+        inquirer.prompt([{
+                message: 'Name?',
+                name: 'name',
+                type: 'input',
+            }, {
+                message: 'Department?',
+                name: 'department',
+                type: 'input',
+            },
+            {
+                message: 'Price?',
+                name: 'price',
+                type: 'input',
+            }, {
+                message: 'Stock Quantity??',
+                name: 'stock',
+                type: 'input',
+            }
+        ]).then(function (choice) {
+            var price = parseFloat(choice.price);
+            var qty = parseInt(choice.stock);
+
+            var query = connection.query('INSERT INTO products SET ?', {
+                    product_name: choice.name,
+                    department_name: choice.department,
+                    price: choice.price,
+                    stock_quantity: choice.stock
+                },
+                function (err, res) {
+                    if (err) throw err;
+                    console.log(res.affectedRows + " product inserted!\n");
+                    manager();
+                });
+        });
+    } else {
+        inquirer.prompt([{
+            message: 'Which item would you like to add?',
+            name: 'addItem',
+            type: 'input',
+        }, {
+            message: 'How many units are added to the stock?',
+            name: 'addQty',
+            type: 'input',
+        }]).then(function (choice) {
+            var item = parseInt(choice.addItem);
+            var qty = parseInt(choice.addQty);
+            updateQuantities(item, qty);
+        });
+    }
+}
+
+function manager() {
+    var table = new Table({
+        head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
+        colWidths: [15, 15, 15, 10, 15]
+    });
+    console.log("Report of low inventory levels:")
+    database.forEach(element => {
+        if (element.stock_quantity < 5) {
+            table.push([element.item_id, element.product_name, element.department_name, element.price, element.stock_quantity]);
+        }
+    });
+    console.log(table.toString())
+
+    inquirer.prompt([{
+        message: 'Add inventory?',
+        name: 'addInventory',
+        type: 'list',
+        choices: ['yes, add stock to existing', 'yes, create new item', 'no']
+    }]).then(function (choice) {
+        if (choice.addInventory === 'yes, add stock to existing') {
+            addInventory(false);
+        } else if (choice.addInventory === 'yes, create new item') {
+            addInventory(true);
+        } else {
+            read();
+        }
+    });
+}
+
+
 function read() {
 
     connection = mysql.createConnection({
@@ -119,8 +202,8 @@ function read() {
             name: 'manager',
             type: 'list',
             choices: ['Manager', 'Customer']
-        }]).then(function (manager) {
-            if (manager.choices === 'yes') {
+        }]).then(function (choice) {
+            if (choice.manager === 'Manager') {
                 manager();
             } else {
                 buyProduct();
