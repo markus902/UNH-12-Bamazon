@@ -2,8 +2,6 @@ var mysql = require("mysql");
 var inquirer = require("inquirer");
 var Table = require("cli-table");
 var connection;
-var newPromise;
-var done = false;
 var database;
 var shoppingCart = [];
 var quantities = [];
@@ -22,33 +20,31 @@ function checkout() {
         head: ['Product ID', 'Name', 'Department', 'Price'],
         colWidths: [15, 15, 15, 10]
     });
-    shoppingCart.forEach((element) => {
-        table.push([element.item_id, element.product_name, element.department_name, element.price, element.stock_quantity]);
-        total = total + (parseFloat(element.price, 10));
-    });
+    console.log(quantities[1]);
+    for (i = 0; i < shoppingCart.length; i++) {
+        table.push([shoppingCart[i].item_id, shoppingCart[i].product_name, shoppingCart[i].department_name, shoppingCart[i].price * quantities[i]]);
+        total = total + parseFloat(shoppingCart[i].price, 10) * quantities[i];
+    }
 
     console.log(table.toString());
     console.log(`Your total: $ ${total}`);
-    connection.end();
 };
 
 function updateQuantities(item, qty) {
 
     var newQty = database[item].stock_quantity - qty;
-    console.log(newQty);
-
     var query = connection.query(
         "UPDATE products SET ? WHERE ?",
         [{
                 stock_quantity: newQty
             },
             {
-                item_id: parseInt(item)
+                item_id: parseInt(item + 1)
             }
         ],
         function (err, res) {
             if (err) throw err;
-            console.log(res.affectedRows + " products updated!\n");
+            // console.log(res.affectedRows + " products updated!\n");
         }
     );
 
@@ -68,30 +64,34 @@ function buyProduct() {
     ]).then(function (answer) {
         var qty = parseInt(answer.quantity, 10);
         var productID = answer.productID - 1;
+
         if (Number.isInteger(qty) && answer.productID <= database.length) {
+            if (answer.quantity > database[answer.productID - 1].stock_quantity) {
+                console.log("There is not enough stock for the amount you chose to buy. Please try again.")
+                buyProduct();
+            } else {
+                updateQuantities(productID, qty);
+                addProductToCart(productID, qty);
 
-            updateQuantities(productID, qty);
-            addProductToCart(productID, qty);
-
-
-            inquirer.prompt([{
-                message: 'Add another product?',
-                type: 'list',
-                name: 'anotherProduct',
-                choices: ['Yes', 'No']
-            }]).then(function (choice) {
-                if (choice.anotherProduct === 'Yes') {
-                    buyProduct();
-                } else {
-                    checkout();
-                }
-            })
+                inquirer.prompt([{
+                    message: 'Add another product?',
+                    type: 'list',
+                    name: 'anotherProduct',
+                    choices: ['Yes', 'No']
+                }]).then(function (choice) {
+                    if (choice.anotherProduct === 'Yes') {
+                        console.log(shoppingCart, quantities)
+                        buyProduct();
+                    } else {
+                        checkout();
+                    }
+                });
+            }
         } else {
             console.log("Your input was invalid! Please try again.")
             buyProduct();
         }
     });
-
 };
 
 function read() {
@@ -105,35 +105,29 @@ function read() {
 
     connection.connect(function (err) {
         if (err) throw err;
-        newPromise.then(function (data) {
-            console.log(data);
-            buyProduct();
-        });
-    });
 
-    newPromise = new Promise(function displayProducts(resolve, reject) {
-        connection.query("SELECT * from products", function (err, res) {
-            if (err) throw err;
-            var table = new Table({
-                head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
-                colWidths: [15, 15, 15, 10, 15]
-            });
-            res.forEach(function (element) {
-                table.push([element.item_id, element.product_name, element.department_name, `$ ${element.price}`, element.stock_quantity]);
-            })
-            console.log(table.toString());
-            database = res;
-            done = true;
-        })
-        setTimeout(() => {
-            if (done === true) {
-                resolve("worked")
-            } else {
-                reject("did not work")
-            }
-        }, 1000);
     });
+    connection.query("SELECT * from products", function (err, res) {
+        if (err) throw err;
+        var table = new Table({
+            head: ['Product ID', 'Name', 'Department', 'Price', 'Stock Quantity'],
+            colWidths: [15, 15, 15, 10, 15]
+        });
+        res.forEach(function (element) {
+            table.push([element.item_id, element.product_name, element.department_name, `$ ${element.price}`, element.stock_quantity]);
+        })
+        console.log(table.toString());
+        database = res;
+
+        // console.log(database)
+
+
+        buyProduct();
+    })
+
 }
+
+
 
 
 
