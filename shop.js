@@ -28,9 +28,12 @@ function checkout() {
     console.log(`Your total: $ ${total}`);
 };
 
-function updateQuantities(item, qty) {
-
-    var newQty = database[item].stock_quantity - qty;
+function updateQuantities(item, qty, method) {
+    if (method) {
+        var newQty = database[item].stock_quantity - qty;
+    } else {
+        var newQty = database[item].stock_quantity + qty;
+    }
     var query = connection.query(
         "UPDATE products SET ? WHERE ?",
         [{
@@ -68,7 +71,7 @@ function buyProduct() {
                 console.log("There is not enough stock for the amount you chose to buy. Please try again.")
                 buyProduct();
             } else {
-                updateQuantities(productID, qty);
+                updateQuantities(productID, qty, true);
                 addProductToCart(productID, qty);
 
                 inquirer.prompt([{
@@ -119,14 +122,15 @@ function addInventory(newItem) {
             var query = connection.query('INSERT INTO products SET ?', {
                     product_name: choice.name,
                     department_name: choice.department,
-                    price: choice.price,
-                    stock_quantity: choice.stock
+                    price: price,
+                    stock_quantity: qty
                 },
                 function (err, res) {
                     if (err) throw err;
                     console.log(res.affectedRows + " product inserted!\n");
                     manager();
                 });
+            console.log("New item added.")
         });
     } else {
         inquirer.prompt([{
@@ -140,7 +144,12 @@ function addInventory(newItem) {
         }]).then(function (choice) {
             var item = parseInt(choice.addItem);
             var qty = parseInt(choice.addQty);
-            updateQuantities(item, qty);
+            if (Number.isInteger(item) && Number.isInteger(qty)) {
+                updateQuantities(item, qty, false);
+            } else {
+                console.log("Please use valid inputs. Try again!");
+                addInventory(false);
+            }
         });
     }
 }
@@ -194,7 +203,7 @@ function read() {
         });
         res.forEach(function (element) {
             table.push([element.item_id, element.product_name, element.department_name, `$ ${element.price}`, element.stock_quantity]);
-        })
+        });
         console.log(table.toString());
         database = res;
         inquirer.prompt([{
@@ -209,13 +218,8 @@ function read() {
                 buyProduct();
             }
         });
-    })
-
-}
-
-
-
-
+    });
+};
 
 read();
 

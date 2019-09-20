@@ -6,7 +6,7 @@
 
 ### Code structure
 
-The app first loads all required packages. The code is broken down into clearly named functions. Via recursion the functions are reused thoughout the code. Generally, inputs are drawn from the inquirer and validated via conditional logic. 
+The app first loads all required packages. The code is broken down into clearly named functions. Via recursion the functions are reused thoughout the code. Generally, inputs are drawn from the inquirer and validated via conditional logic. All items are pushed into a shopping cart array, which is not ideal since inconsistent id numbers are not handled. This will be improved.
 
 ### Technologies
 
