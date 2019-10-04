@@ -2,7 +2,7 @@
 
 ### Description and usage
 
-* This project is a CLI online shop utilizing a SQL database. The user is guided through the programm via list menues or inputs to either act as a customer and buy products or as a manager and add products or inventory. In both modes the app validates the inputs updates the database accordingly.
+This project is a CLI online shop utilizing a SQL database. The user is guided through the programm via list menues or inputs to either act as a customer and buy products or as a manager and add products or inventory. In both modes the app validates the inputs updates the database accordingly.
 
 ### Code structure
 
